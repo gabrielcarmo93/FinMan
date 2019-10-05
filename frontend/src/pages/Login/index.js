@@ -5,13 +5,19 @@ import { Container, HeaderBar, Body } from './styles'
 import Auth from '../../auth'
 import logo from '../../assets/logo/twitter_header_photo_1.png'
 import landingImage from '../../assets/financial.png'
-// import logoTransparent from '../../assets/logo/logo_transparent.png'
 import { Button, Input, Header } from 'semantic-ui-react'
-// import { Link } from 'react-router-dom'
+import { history } from '../../helpers/history'
 
 class Login extends Component {
 	state = {
 		register: false,
+	}
+
+	componentDidMount() {
+		if (Auth.getToken()){
+			console.log('Tem token')
+			history.push('/')
+		}
 	}
 
 	submitLogin = async (e) => {
@@ -23,8 +29,8 @@ class Login extends Component {
 
 		try {
 			const user = await api.post('/authenticate', data)
-
-			Auth.authenticateUser(user.data.token)
+			Auth.authenticateUser(user.data.token, data.email)
+			history.push('/')
 			
 		} catch (err) {
 			alert(err.response.statusText)
@@ -43,7 +49,16 @@ class Login extends Component {
 		try {
 			const user = await api.post('/user', data)
 
-			console.log(user)
+			try {
+
+				data.username = undefined
+				const user = await api.post('/authenticate', data)
+				Auth.authenticateUser(user.data.token, data.email)
+				history.push('/')
+				
+			} catch (err) {
+				alert(err.response.statusText)
+			}
 		} catch (err) {
 			alert(err.response.statusText)
 		}
@@ -89,12 +104,12 @@ class Login extends Component {
 					<div id="landing">
 						<Header as='h1'>FinMan</Header>
 						<p>
-							Idealizado pela necessidade de organizar sua vida financeira. O FinMan atende todos os seus controles de registros de entradas e saídas financeiras, para entregar a você um maior controle sobre suas atividades e gastos
+							Idealizado pela necessidade de organizar sua vida financeira. O FinMan atende todos os seus controles de registros de entradas e saídas financeiras, para proporcionar a você um maior controle sobre suas atividades e gastos.
 						</p>
 						<img src={landingImage} alt="FinMan" />
 					</div>
 					<div id="register">
-						<span>Cadastre-se, é gratuito</span>
+						<span>Cadastre-se, é rápido, fácil e gratuito</span>
 						<form id="registerFormWrapper" onSubmit={this.registerLogin}>
 							<div id="doubleInput">
 								<Input

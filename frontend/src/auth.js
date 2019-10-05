@@ -5,8 +5,9 @@ class Auth {
 	* @param {string} token
 	*/
 	/* eslint-disable no-undef */
-	static authenticateUser (token) {
+	static authenticateUser (token, email) {
 		localStorage.setItem('@FinMan/token', token)
+		localStorage.setItem('@FinMan/userEmail', email)
 	}
 
 	static authNotified () {
@@ -50,6 +51,10 @@ class Auth {
 
 	static getToken () {
 		return localStorage.getItem('@FinMan/token')
+	}
+
+	static getUserEmail () {
+		return localStorage.getItem('@FinMan/userEmail')
 	}
 }
 
