@@ -32,7 +32,7 @@ class CategoriaDeReceitaController {
     }
 
     async store({ request }) {
-        const data = request.only(['name','date','category','value'])
+        const data = request.only(['idOwner','name','icon'])
 
         const categoriaDeReceita = await CategoriaDeReceita.create(data)
 
@@ -47,6 +47,14 @@ class CategoriaDeReceitaController {
         const deletion = await categoriaDeReceita.delete()
 
         return deletion
+    }
+
+    async getByIdOwner ({ params }) {
+        const { idOwner } = params
+
+        const categoriaDeReceita = await CategoriaDeReceita.query().where('idOwner', idOwner).orderBy('name', 'asc').fetch()
+
+        return categoriaDeReceita
     }
 }
 

@@ -10,6 +10,14 @@ class AuthController {
         return users
     }
 
+    async getUserByMail({ params }) {
+        const { mail } = params
+
+        const user = await User.query().where('email', mail).fetch()
+
+        return user
+    }
+
     async store({ request }) {
         const data = request.only(['email','password','username'])
 
@@ -24,6 +32,16 @@ class AuthController {
         const token = await auth.attempt(email, password)
 
         return token 
+    }
+
+    async delete({ params }) {
+        const { id } = params
+
+        const user = await User.find(id)
+
+        const deletion = user.delete()
+
+        return deletion
     }
 }
 

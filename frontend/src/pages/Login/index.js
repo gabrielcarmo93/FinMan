@@ -47,7 +47,7 @@ class Login extends Component {
 
 
 		try {
-			const user = await api.post('/user', data)
+			await api.post('/user', data)
 
 			try {
 

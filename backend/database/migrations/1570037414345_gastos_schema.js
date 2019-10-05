@@ -10,8 +10,6 @@ class GastosSchema extends Schema {
       table.string("name").notNullable()
       table.date("date").defaultTo(this.fn.now())
       table.integer("category")
-        .references("id")
-        .inTable("categoria_de_despesas")
       table.decimal("value").notNullable()
       table.timestamps()
     })

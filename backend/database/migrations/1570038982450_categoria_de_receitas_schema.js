@@ -7,7 +7,9 @@ class CategoriaDeReceitasSchema extends Schema {
   up () {
     this.create('categoria_de_receitas', (table) => {
       table.increments()
+      table.integer("idOwner")
       table.string("name").notNullable()
+      table.string("icon")
       table.timestamps()
     })
   }

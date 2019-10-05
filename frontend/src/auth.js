@@ -41,6 +41,7 @@ class Auth {
 	*/
 	static deauthenticateUser () {
 		localStorage.removeItem('@FinMan/token')
+		localStorage.removeItem('@FinMan/userEmail')
 	}
 
 	/**

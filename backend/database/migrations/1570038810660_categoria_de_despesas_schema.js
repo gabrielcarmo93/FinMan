@@ -7,8 +7,9 @@ class CategoriaDeDespesasSchema extends Schema {
   up () {
     this.create('categoria_de_despesas', (table) => {
       table.increments()
+      table.integer("idOwner")
       table.string("name").notNullable()
-      table.string("description")
+      table.string("icon")
       table.timestamps()
     })
   }
