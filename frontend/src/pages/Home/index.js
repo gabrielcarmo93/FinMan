@@ -1,18 +1,22 @@
 import React, { Component } from 'react'
-import { Container, HeaderBar, Body, Bills, AdvOptions, Balance, LessCategory, PlusCategory, BillsDashBoard, BillsHeader, PlusHeader, LessHeader, PlusBoard, LessBoard, NoRegistredCategory } from './styles'
+import { Container, HeaderBar, Body, Bills, AdvOptions, Balance, LessCategory, PlusCategory, BillsDashBoard, BillsHeader, PlusHeader, LessHeader, PlusBoard, LessBoard, NoRegistredCategory, BoardItem, BillValue, BillTitle } from './styles'
 import { Button, Select, Radio, Form, Modal, Icon, Input } from 'semantic-ui-react'
 import IconGroup from '../../components/IconGroup'
+import logo from '../../assets/logo/twitter_header_photo_1.png'
 import moment from 'moment'
 import api from '../../services/api'
 import auth from '../../auth'
 import { history } from '../../helpers/history'
 import InputMask from 'react-input-mask'
 import CurrencyInput from 'react-currency-input'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 class Home extends Component {
     state = {
         balance: 0.00,
-        categoriaMovimentação: undefined
+        categoriaMovimentação: undefined,
+        billValue: 0,
     }
 
     componentDidMount() {
@@ -29,15 +33,17 @@ class Home extends Component {
 
                 this.getReceitas()
                 this.getDespesas()
+                this.getMovimentacoes()
 
             } else {
-                alert('Erro ao conectar')
+                toast.error('Erro ao conectar')
                 auth.deauthenticateUser()
-                history.push('/')
+                history.push('/login')
             }
 
         } catch(err) {
-            console.log(err)
+            auth.deauthenticateUser()
+            history.push('/login')
         }
     }
 
@@ -55,6 +61,70 @@ class Home extends Component {
             this.setState({ despesas: response.data })
     }
 
+    async getMovimentacoes() {
+        const response = await api.get(`/gastosByOwner/${this.state.user.id}`)
+
+        const data = []
+
+        const movimentacoes = response.data
+        const despesas = this.state.despesas
+        const receitas = this.state.receitas
+        // console.log(response.data)
+        movimentacoes.forEach(function(el0, i0, all0) {
+            if(el0.type === 'out') {
+                despesas.forEach(function(el1, i1, all1) {
+                    if(el0.category === el1.id) {
+                        // console.log(el0, el1)
+
+                        const obj = {
+                            category: el0.category,
+                            created_at: el0.created_at,
+                            date: el0.created_at,
+                            id: el0.id,
+                            idOwner: el0.idOwner,
+                            name: el0.name,
+                            type: el0.type,
+                            updated_at: el0.updated_at,
+                            value: el0.value,
+                            icon: el1.icon,
+                            categoryName: el1.name
+                        }
+
+                        data.push(obj)
+                    }
+                })
+            } else {
+                receitas.forEach(function(el1, i1, all1) {
+                    if(el0.category === el1.id) {
+                        // console.log(el0, el1)
+
+                        const obj = {
+                            category: el0.category,
+                            created_at: el0.created_at,
+                            date: el0.created_at,
+                            id: el0.id,
+                            idOwner: el0.idOwner,
+                            name: el0.name,
+                            type: el0.type,
+                            updated_at: el0.updated_at,
+                            value: el0.value,
+                            icon: el1.icon,
+                            categoryName: el1.name
+                        }
+
+                        data.push(obj)
+                    }
+                })
+            }
+        })
+
+        this.setState({ movimentacoes: data })
+    }
+
+    getBalance() {
+        
+    }
+
     registerReceitaCategory = async () => {
         const data = {
             idOwner: this.state.user.id,
@@ -67,7 +137,10 @@ class Home extends Component {
         const response = await api.post('/categoriaDeReceita', data)
 
         if(response.status === 200) {
-            alert("Registrado com Sucesso")
+            this.setState({ showModal: false })
+            toast.success("Registrado com Sucesso")
+            this.getReceitas()
+            this.setState({ showModal: undefined })
         }
     }
 
@@ -83,7 +156,10 @@ class Home extends Component {
         const response = await api.post('/categoriaDeGasto', data)
 
         if(response.status === 200) {
-            alert("Registrado com Sucesso")
+            this.setState({ showModal: false })
+            toast.success('Registrado com sucesso')
+            this.getDespesas()
+            this.setState({ showModal: undefined })
         }
     }
 
@@ -124,11 +200,39 @@ class Home extends Component {
         return options
 
     }
+
+    registerBill = async () => {
+        var type
+
+        (this.state.categoriaMovimentação === 'despesa') ? type = 'out' : type = 'in'
+
+        if(moment(this.state.movimentacaoDate, 'DD/MM/YYYY', true).isValid()) {
+            const bill = {
+                name: this.state.movimentacaoName,
+                date: moment(this.state.movimentacaoDate,'DD/MM/YYYY').format(),
+                category: this.state.movimentacaooGroup,
+                type: type,
+                value: this.state.movimentacaoValue,
+                idOwner: this.state.user.id
+            }
+    
+            const response = await api.post('/gasto', bill)
+
+            if(response.status === 200) {
+                this.setState({ showModal: false })
+                toast.success('Registrado com sucesso')
+                this.getMovimentacoes()
+                this.setState({ showModal: undefined })
+
+            }
+        }
+
+    }
     render() {
         return (
             <Container>
                 <HeaderBar>
-
+                    <img src={logo} alt='FinMan' />
                 </HeaderBar>
                 <Body>
                     <Bills>
@@ -142,7 +246,7 @@ class Home extends Component {
                                 }
                             </span>
 
-                            <Modal size='tiny' trigger={
+                            <Modal size='tiny' open={this.state.showModal} dimmer='blurring' trigger={
                                 <Button animated='fade'  onClick={() => this.createOptions()}>
                                 <Button.Content visible>Adicionar Movimentação</Button.Content>
                                     <Button.Content hidden>
@@ -170,7 +274,8 @@ class Home extends Component {
                                                     name="movimentacaoValue"
                                                     decimalSeparator=","
                                                     thousandSeparator="."
-                                                    onChangeEvent={(event, maskedvalue, floatvalue) => this.setState({ [event.target.name]: floatvalue})}
+                                                    value={this.state.billValue}
+                                                    onChangeEvent={(event, maskedvalue, floatvalue) => this.setState({ [event.target.name]: floatvalue, billValue: maskedvalue})}
                                                 />
                                             </Input>
                                         </Form.Field>
@@ -207,9 +312,19 @@ class Home extends Component {
                                         <Form.Field>
                                             <Select
                                                 placeholder="Selecione a Categoria"
+                                                name="movimentacaooGroup"
                                                 options={this.createOptions()}
-                                                onChange={e => console.log(e)}
+                                                onChange={(e, data) => this.setState({ [data.name]: data.value }) }
                                             />
+                                        </Form.Field>
+                                        <Form.Field>
+                                            <Button
+                                                primary
+                                                fluid
+                                                onClick={this.registerBill}
+                                            >
+                                                Registrar
+                                                </Button>
                                         </Form.Field>
                                     </Form>
                                 </Modal.Description>
@@ -217,7 +332,31 @@ class Home extends Component {
                             </Modal>
                         </BillsHeader>
                         <BillsDashBoard>
+                            {
+                                (this.state.movimentacoes) ? 
+                                    this.state.movimentacoes.map(
+                                        movimentacao => (
+                                            <BoardItem key={movimentacao.id}>
+                                                <div className={movimentacao.type}>
 
+                                                        <BillValue>
+                                                            {
+                                                                (movimentacao.type==='in') ? <Icon name={movimentacao.icon} /> : ''
+                                                            }
+                                                            R$ {movimentacao.value.toString().replace('.',',')}
+                                                            {
+                                                                (movimentacao.type==='out') ? <Icon name={movimentacao.icon} /> : ''
+                                                            }
+                                                        </BillValue>
+                                                        <BillTitle>{movimentacao.name} </BillTitle>
+                                                </div>
+                                            </BoardItem>
+                                        )
+                                    )
+                                : (
+                                    <span>Nenhuma movimentação registrada</span>
+                                )
+                            }
                         </BillsDashBoard>
                     </Bills>
                     <AdvOptions>
@@ -230,7 +369,7 @@ class Home extends Component {
                             <PlusHeader>
 
                                 <legend>Categorias de Receitas</legend>
-                                <Modal size='tiny' trigger={
+                                <Modal size='tiny' open={this.state.showModal} trigger={
                                     <Button animated='fade' size='small'>
                                     <Button.Content visible>+ Receita</Button.Content>
                                         <Button.Content hidden>
@@ -291,7 +430,7 @@ class Home extends Component {
                         <LessCategory>
                             <LessHeader>
                                 <legend>Categorias de Despesas</legend>
-                                <Modal size='tiny' trigger={
+                                <Modal size='tiny' open={this.state.showModal} trigger={
                                     <Button animated='fade' size='small'>
                                     <Button.Content visible>+ Despesa</Button.Content>
                                         <Button.Content hidden>
@@ -349,6 +488,17 @@ class Home extends Component {
                         </LessCategory>
                     </AdvOptions>
                 </Body>
+                <ToastContainer
+                    position="bottom-right"
+                    autoClose={3500}
+                    hideProgressBar={true}
+                    newestOnTop={false}
+                    closeOnClick
+                    rtl={false}
+                    pauseOnVisibilityChange
+                    draggable
+                    pauseOnHover
+                />
             </Container>
         )
     }

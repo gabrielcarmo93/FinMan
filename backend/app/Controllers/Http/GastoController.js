@@ -21,7 +21,7 @@ class GastoController {
     async update({ request, params }) {
         const id = request.only(['id'])
 
-        const data = request.only(['name','date','category','value'])
+        const data = request.only(['name','date','category','type','value','idOwner'])
 
         const gasto = await Gasto
             .query()
@@ -32,7 +32,7 @@ class GastoController {
     }
 
     async store({ request }) {
-        const data = request.only(['name','date','category','value'])
+        const data = request.only(['name','date','category','type','value','idOwner'])
 
         const gasto = await Gasto.create(data)
 
@@ -47,6 +47,14 @@ class GastoController {
         const deletion = await gasto.delete()
 
         return deletion
+    }
+
+    async indexByOwner ({ params }) {
+        const { idOwner } = params
+        
+        const gastos = await Gasto.query().where('idOwner', idOwner).orderBy('date', 'desc').fetch()
+
+        return gastos
     }
 }
 

@@ -7,6 +7,8 @@ import logo from '../../assets/logo/twitter_header_photo_1.png'
 import landingImage from '../../assets/financial.png'
 import { Button, Input, Header } from 'semantic-ui-react'
 import { history } from '../../helpers/history'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 class Login extends Component {
 	state = {
@@ -33,7 +35,13 @@ class Login extends Component {
 			history.push('/')
 			
 		} catch (err) {
-			alert(err.response.statusText)
+			if(!err.response)
+				toast.warning("Erro ao conectar com o servidor");
+			else  {
+				if(err.response.status === 401)
+					toast.error("Usuário não encontrado!");
+			}
+				
 		}
 	}
 
@@ -173,6 +181,17 @@ class Login extends Component {
 						</form>
 					</div>
 				</Body>
+			<ToastContainer
+				position="bottom-right"
+				autoClose={3500}
+				hideProgressBar={true}
+				newestOnTop={false}
+				closeOnClick
+				rtl={false}
+				pauseOnVisibilityChange
+				draggable
+				pauseOnHover
+			/>
 			</Container>
 		)
 	}
