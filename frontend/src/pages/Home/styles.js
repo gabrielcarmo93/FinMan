@@ -120,7 +120,7 @@ const BoardItem = styled.div`
         align-items: flex-end;
         justify-content: center;
         height: 120px;
-        background: rgba(0, 255, 0, .1);
+        background: rgba(0, 0, 255, .1);
         padding: 0 15px;
     }
 

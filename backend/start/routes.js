@@ -42,3 +42,18 @@ Route.get('/categoriaDeReceita/:id', 'CategoriaDeReceitaController.indexById')
 Route.get('/categoriaDeReceitaByOwner/:idOwner', 'CategoriaDeReceitaController.getByIdOwner')
 Route.put('/categoriaDeReceita', 'CategoriaDeReceitaController.update')
 Route.delete('categoriaDeReceita/:id', 'CategoriaDeReceitaController.deleteById')
+
+
+Route.get('/transactions', 'TransactionController.index')
+Route.post('/transaction', 'TransactionController.store')
+Route.get('/transaction/:id', 'TransactionController.indexById')
+Route.get('/transactionsByOwner/:idOwner/:startDate/:endDate', 'TransactionController.show')
+Route.put('/transaction', 'TransactionController.update')
+Route.delete('/transaction/:id', 'TransactionController.destroy')
+
+Route.get('/transactionsCategory', 'TransactionCategoryController.index')
+Route.post('/transactionCategory', 'TransactionCategoryController.store')
+Route.get('/transactionCategory/:id', 'TransactionCategoryController.indexById')
+Route.get('/transactionCategoryByOwner/:idOwner', 'TransactionCategoryController.show')
+Route.put('/transactionCategory', 'TransactionCategoryController.update')
+Route.delete('/transactionCategory/:id', 'TransactionCategoryController.destroy')

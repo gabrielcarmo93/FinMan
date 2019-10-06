@@ -12,14 +12,15 @@ import CurrencyInput from 'react-currency-input'
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
+let _this
+
 class Home extends Component {
     state = {
         balance: 0.00,
-        categoriaMovimentação: undefined,
-        billValue: 0,
-        despesas: [],
-        receitas: [],
-        movimentacoes: [],
+        bills: [],
+        transactions: [],
+        transactionCategories: [],
+        transactionCategory: 'out',
         startDate: moment().subtract(30, 'days').format(),
         endDate: moment().format()
     }
@@ -27,19 +28,26 @@ class Home extends Component {
     componentWillMount() {
         this.getUserByMail()
     }
+    
+    componentDidMount() {
+        _this = this
+        setTimeout(
+            function() {
+                _this.arrangeEverything()
+            }
+        ,1000)
+    }
 
     async getUserByMail() {
         try {
             const response = await api.get(`user/${auth.getUserEmail()}`)
     
             if(response.data.length > 0) {
-                response.data[0].password = undefined
+                delete response.data[0].password
                 this.setState({ user: response.data[0]})
 
-                this.getReceitas()
-                this.getDespesas()
-                // this.getMovimentacoes()
-                // await this.getBalance()
+                this.getTransactionCategories()
+                this.getTransactions()
 
             } else {
                 toast.error('Erro ao conectar')
@@ -53,105 +61,48 @@ class Home extends Component {
         }
     }
 
-    async getReceitas() {
-        const response = await api.get(`/categoriaDeReceitaByOwner/${this.state.user.id}`)
+    async getTransactionCategories() {
+        const response = await api.get(`/transactionCategoryByOwner/${this.state.user.id}`)
 
         if(response.data.length > 0)
-            this.setState({ receitas: response.data })
-    }
-
-    async getDespesas() {
-        const response = await api.get(`/categoriaDeGastoByOwner/${this.state.user.id}`)
-
-        if(response.data.length > 0) {
-            this.setState({ despesas: response.data })
-        }
-
-        this.getMovimentacoes()
+            this.setState({ transactionCategories: response.data })
     }
     
-    async getMovimentacoes() {
-        this.setState({ showModal: false })
-        this.setState({ showModal: undefined })
-        if(!moment(this.state.startDate).isValid()) {
-            toast.error('Data de início incorreta')
-            return false
-        }
+    async getTransactions() {
+        const response = await api.get(`/transactionsByOwner/${this.state.user.id}/${this.state.startDate}/${this.state.endDate}`)
 
-        if(!moment(this.state.endDate).isValid()) {
-            toast.error('Data de fim incorreta')
-            return false
-        }
+        if(response.data.length > 0)
+            this.setState({ transactions: response.data })
+    }
 
-
-        const response = await api.get(`/gastosByOwner/${this.state.user.id}/${this.state.startDate}/${this.state.endDate}`)
-        this.setState({ movimentacoes: response.data })
-
+    async arrangeEverything() {
         const data = []
+        const transactions = this.state.transactions
+        const transactionCategories = this.state.transactionCategories
 
-        const movimentacoes = this.state.movimentacoes
-        const despesas = this.state.despesas
-        const receitas = this.state.receitas
-
-        while(typeof movimentacoes === undefined) {
-            console.log('esperando')
-        }
-
-        while(typeof despesas === undefined) {
-            console.log('esperando')
-        }
-
-        while(typeof receitas === undefined) {
-            console.log('esperando')
-        }
-
-        movimentacoes.forEach(function(el0, i0, all0) {
-            if(el0.type === 'out') {
-                despesas.forEach(function(el1, i1, all1) {
-                    if(el0.category === el1.id) {
-
-                        const obj = {
-                            category: el0.category,
-                            created_at: el0.created_at,
-                            date: el0.created_at,
-                            id: el0.id,
-                            idOwner: el0.idOwner,
-                            name: el0.name,
-                            type: el0.type,
-                            updated_at: el0.updated_at,
-                            value: el0.value,
-                            icon: el1.icon,
-                            categoryName: el1.name
-                        }
-
-                        data.push(obj)
+        transactions.forEach(function(el0, i0, all0) {
+            transactionCategories.forEach(function(el1, i1, all1) {
+                if(el0.idTransactionCategory === el1.id) {
+                    const obj = {
+                        category: el0.idTransactionCategory,
+                        created_at: el0.created_at,
+                        date: el0.created_at,
+                        id: el0.id,
+                        idOwner: el0.idOwner,
+                        name: el0.name,
+                        type: el1.type,
+                        updated_at: el0.updated_at,
+                        value: el0.value,
+                        icon: el1.icon,
+                        categoryName: el1.name
                     }
-                })
-            } else {
-                receitas.forEach(function(el1, i1, all1) {
-                    if(el0.category === el1.id) {
 
-                        const obj = {
-                            category: el0.category,
-                            created_at: el0.created_at,
-                            date: el0.created_at,
-                            id: el0.id,
-                            idOwner: el0.idOwner,
-                            name: el0.name,
-                            type: el0.type,
-                            updated_at: el0.updated_at,
-                            value: el0.value,
-                            icon: el1.icon,
-                            categoryName: el1.name
-                        }
-
-                        data.push(obj)
-                    }
-                })
-            }
+                    data.push(obj)
+                }
+            })
         })
 
-        this.setState({ movimentacoes: data })
+        this.setState({ bills: data })
         this.getBalance()
     }
 
@@ -159,7 +110,7 @@ class Home extends Component {
         var plus = parseFloat(0)
         var minus = parseFloat(0)
 
-        this.state.movimentacoes.forEach(function(el, i, all) {
+        this.state.bills.forEach(function(el, i, all) {
             if(el.type==='in'){
                 plus += parseFloat(el.value)
             }
@@ -174,105 +125,95 @@ class Home extends Component {
         this.setState({ balance: result })
     }
 
-    registerReceitaCategory = async () => {
+    setTransactionCategory = async () => {
         const data = {
             idOwner: this.state.user.id,
-            name: this.state.receitaName,
+            name: this.state.categoryName,
+            type: this.state.categoryType,
             icon: localStorage.getItem('@FinMan/currentIcon')
         }
 
+        console.log(data)
+
         localStorage.removeItem('@FinMan/currentIcon')
 
-        const response = await api.post('/categoriaDeReceita', data)
+        const response = await api.post('/transactionCategory', data)
 
         if(response.status === 200) {
             this.setState({ showModal: false })
             toast.success("Registrado com Sucesso")
-            this.getReceitas()
+            this.getTransactionCategories()
             this.setState({ showModal: undefined })
         }
     }
 
-    registerDespesaCategory = async () => {
-        const data = {
-            idOwner: this.state.user.id,
-            name: this.state.despesaName,
-            icon: localStorage.getItem('@FinMan/currentIcon')
-        }
-        
-        localStorage.removeItem('@FinMan/currentIcon')
-
-        const response = await api.post('/categoriaDeGasto', data)
-
-        if(response.status === 200) {
-            this.setState({ showModal: false })
-            toast.success('Registrado com sucesso')
-            this.getDespesas()
-            this.setState({ showModal: undefined })
-        }
-    }
 
     createOptions() {
         
-        const options = []
+        var options = []
 
-        if(this.state.categoriaMovimentação === 'receita') {
-            this.state.receitas.map(
-                receita => {
-                    const obj = {
-                        key: receita.id,
-                        value: receita.id,
-                        text: receita.name
+        if(this.state.transactionCategory === 'in') {
+            this.state.transactionCategories.map(
+                transaction => {
+                    if(transaction.type==='in') {
+                        const obj = {
+                            key: transaction.id,
+                            value: transaction.id,
+                            text: transaction.name
+                        }
+        
+                        options.push(obj)
+                        return true
                     }
-    
-                    options.push(obj)
-                    return true
                 }
             )
         }
-
-        if(this.state.categoriaMovimentação === 'despesa') {
-            this.state.despesas.map(
-                despesa => {
-                    const obj = {
-                        key: despesa.id,
-                        value: despesa.id,
-                        text: despesa.name
+        
+        if(this.state.transactionCategory === 'out') {
+            this.state.transactionCategories.map(
+                transaction => {
+                    if(transaction.type==='out') {
+                        const obj = {
+                            key: transaction.id,
+                            value: transaction.id,
+                            text: transaction.name
+                        }
+        
+                        options.push(obj)
+                        return true
                     }
-    
-                    options.push(obj)
-                    return true
                 }
             )
         }
 
         return options
-
     }
 
-    registerBill = async () => {
-        var type
+    setTransaction = async () => {
+        // var type
 
-        (this.state.categoriaMovimentação === 'despesa') ? type = 'out' : type = 'in'
+        // (this.state.transactionGroup === 'out') ? type = 'out' : type = 'in'
 
-        if(moment(this.state.movimentacaoDate, 'DD/MM/YYYY', true).isValid()) {
-            const bill = {
-                name: this.state.movimentacaoName,
-                date: moment(this.state.movimentacaoDate,'DD/MM/YYYY').format(),
-                category: this.state.movimentacaooGroup,
-                type: type,
-                value: this.state.movimentacaoValue,
-                idOwner: this.state.user.id
+        if(moment(this.state.transactionDate, 'DD/MM/YYYY', true).isValid()) {
+            const transaction = {
+                idOwner: this.state.user.id,
+                name: this.state.transactionName,
+                date: moment(this.state.transactionDate,'DD/MM/YYYY').format(),
+                idTransactionCategory: this.state.transactionGroup,
+                value: this.state.transactionValue,
             }
     
-            const response = await api.post('/gasto', bill)
+            const response = await api.post('/transaction', transaction)
 
             if(response.status === 200) {
                 this.setState({ showModal: false })
                 toast.success('Registrado com sucesso')
-                this.getMovimentacoes()
+                this.getTransactions()
                 this.setState({ showModal: undefined })
 
+            } else {
+                alert('erro')
+                console.log(response)
             }
         }
 
@@ -346,7 +287,7 @@ class Home extends Component {
                                             <Form.Field>
                                                 <label>Nome</label>
                                                 <input
-                                                    name="movimentacaoName"
+                                                    name="transactionName"
                                                     onChange={e => this.setState({ [e.target.name]: e.target.value })}
                                                 />
                                             </Form.Field>
@@ -356,7 +297,7 @@ class Home extends Component {
                                                 <Input iconPosition='left' placeholder='Valor'>
                                                     <Icon name='dollar' />
                                                     <CurrencyInput
-                                                        name="movimentacaoValue"
+                                                        name="transactionValue"
                                                         decimalSeparator=","
                                                         thousandSeparator="."
                                                         value={this.state.billValue}
@@ -369,7 +310,7 @@ class Home extends Component {
                                                 <Input iconPosition='left' placeholder='Data'>
                                                     <Icon name='calendar alternate outline' />
                                                     <InputMask
-                                                        name="movimentacaoDate"
+                                                        name="transactionDate"
                                                         mask="99/99/9999"
                                                         onChange={e => this.setState({ [e.target.name]: e.target.value })}
                                                     />
@@ -379,25 +320,25 @@ class Home extends Component {
                                             <Form.Field>
                                                 <Radio
                                                     label='Receita'
-                                                    name='categoriaMovimentação'
-                                                    value='receita'
-                                                    checked={this.state.categoriaMovimentação === 'receita'}
-                                                    onChange={e=> this.setState({ categoriaMovimentação: 'receita'})}
+                                                    name='transactionCategory'
+                                                    value='in'
+                                                    checked={this.state.transactionCategory === 'in'}
+                                                    onChange={e=> this.setState({ transactionCategory: 'in'})}
                                                     style={{marginRight: '10px'}}
                                                 />
                                                 <Radio
                                                     label='Despesa'
-                                                    name='categoriaMovimentação'
-                                                    value='despesa'
-                                                    checked={this.state.categoriaMovimentação === 'despesa'}
-                                                    onChange={e=> this.setState({ categoriaMovimentação: 'despesa'})}
+                                                    name='transactionCategory'
+                                                    value='out'
+                                                    checked={this.state.transactionCategory === 'out'}
+                                                    onChange={e=> this.setState({ transactionCategory: 'out'})}
                                                     style={{marginLeft: '10px'}}
                                                 />
                                             </Form.Field>
                                             <Form.Field>
                                                 <Select
                                                     placeholder="Selecione a Categoria"
-                                                    name="movimentacaooGroup"
+                                                    name="transactionGroup"
                                                     options={this.createOptions()}
                                                     onChange={(e, data) => this.setState({ [data.name]: data.value }) }
                                                 />
@@ -406,7 +347,7 @@ class Home extends Component {
                                                 <Button
                                                     primary
                                                     fluid
-                                                    onClick={this.registerBill}
+                                                    onClick={this.setTransaction}
                                                 >
                                                     Registrar
                                                     </Button>
@@ -419,22 +360,22 @@ class Home extends Component {
                         </BillsHeader>
                         <BillsDashBoard>
                             {
-                                (this.state.movimentacoes) ? 
-                                    this.state.movimentacoes.map(
-                                        movimentacao => (
-                                            <BoardItem key={movimentacao.id}>
-                                                <div className={movimentacao.type}>
+                                (this.state.bills.length > 0) ? 
+                                    this.state.bills.map(
+                                        bill => (
+                                            <BoardItem key={bill.id}>
+                                                <div className={bill.type}>
 
                                                         <BillValue>
                                                             {
-                                                                (movimentacao.type==='in') ? <Icon name={movimentacao.icon} /> : ''
+                                                                (bill.type==='in') ? <Icon name={bill.icon} /> : ''
                                                             }
-                                                            R$ {movimentacao.value.toString().replace('.',',')}
+                                                            R$ {bill.value.toString().replace('.',',')}
                                                             {
-                                                                (movimentacao.type==='out') ? <Icon name={movimentacao.icon} /> : ''
+                                                                (bill.type==='out') ? <Icon name={bill.icon} /> : ''
                                                             }
                                                         </BillValue>
-                                                        <BillTitle>{movimentacao.name} - {moment(movimentacao.date).format('DD/MM/YYYY')}</BillTitle>
+                                                        <BillTitle>{bill.name} - {moment(bill.date).format('DD/MM/YYYY')}</BillTitle>
                                                 </div>
                                             </BoardItem>
                                         )
@@ -478,15 +419,15 @@ class Home extends Component {
                                         <Input
                                             fluid
                                             placeholder="Ex: Conta de Luz"
-                                            name="receitaName"
-                                            onChange={e => this.setState({ [e.target.name]: e.target.value })}
+                                            name="categoryName"
+                                            onChange={e => this.setState({ [e.target.name]: e.target.value, categoryType: 'in' })}
                                         />
                                         <legend style={{marginTop: '10px'}}>Escolha um ícone para a categoria</legend>
                                         <IconGroup />
                                         <Button
                                             primary
                                             fluid
-                                            onClick={this.registerReceitaCategory}
+                                            onClick={this.setTransactionCategory}
                                         >
                                             Cadastrar
                                         </Button>
@@ -496,24 +437,25 @@ class Home extends Component {
                             </PlusHeader>
                             <PlusBoard>
                                 {
-                                    this.state.receitas ? (
-                                        this.state.receitas.map(
-                                            receita => (
-                                                <Button
-                                                    icon
-                                                    labelPosition='left'
-                                                    basic
-                                                    color='green'
-                                                    key={receita.id}
-                                                    style={{boxingSizing: 'borderBox', margin: '2px'}}
-                                                    size='mini'
-                                                >
-                                                    <Icon name={receita.icon} />
-                                                    {receita.name}
-                                                </Button>
-                                            )
+                                    this.state.transactionCategories ? (
+                                        this.state.transactionCategories.map(
+                                            transactionCategory => {
+                                                return (transactionCategory.type === 'in') ? (
+                                                        <Button
+                                                            icon
+                                                            labelPosition='left'
+                                                            basic
+                                                            color='green'
+                                                            key={transactionCategory.id}
+                                                            style={{boxingSizing: 'borderBox', margin: '2px'}}
+                                                            size='mini'
+                                                        >
+                                                            <Icon name={transactionCategory.icon} />
+                                                            {transactionCategory.name}
+                                                        </Button>
+                                                    ) : false
+                                            }
                                         )
-
                                     ) : <NoRegistredCategory>Nenhuma categoria cadastrada</NoRegistredCategory>
                                 }
                             </PlusBoard>
@@ -539,15 +481,15 @@ class Home extends Component {
                                         <Input
                                             fluid
                                             placeholder="Ex: Salário"
-                                            name="despesaName"
-                                            onChange={e => this.setState({ [e.target.name]: e.target.value })}
+                                            name="categoryName"
+                                            onChange={e => this.setState({ [e.target.name]: e.target.value, categoryType: 'out' })}
                                         />
                                         <legend style={{marginTop: '10px'}}>Escolha um ícone para a categoria</legend>
                                         <IconGroup />
                                         <Button
                                             primary
                                             fluid
-                                            onClick={this.registerDespesaCategory}
+                                            onClick={this.setTransactionCategory}
                                         >
                                             Cadastrar
                                         </Button>
@@ -555,25 +497,26 @@ class Home extends Component {
                                 </Modal>
                             </LessHeader>
                             <LessBoard>
-                            {
-                                    this.state.despesas ? (
-                                        this.state.despesas.map(
-                                            despesa => (
-                                                <Button
-                                                    icon
-                                                    labelPosition='left'
-                                                    basic
-                                                    color='red'
-                                                    key={despesa.id}
-                                                    style={{boxingSizing: 'borderBox', margin: '2px'}}
-                                                    size='mini'
-                                                >
-                                                    <Icon name={despesa.icon} />
-                                                    {despesa.name}
-                                                </Button>
-                                            )
+                                {
+                                    this.state.transactionCategories ? (
+                                        this.state.transactionCategories.map(
+                                            transactionCategory => {
+                                                return (transactionCategory.type === 'out') ? (
+                                                        <Button
+                                                            icon
+                                                            labelPosition='left'
+                                                            basic
+                                                            color='red'
+                                                            key={transactionCategory.id}
+                                                            style={{boxingSizing: 'borderBox', margin: '2px'}}
+                                                            size='mini'
+                                                        >
+                                                            <Icon name={transactionCategory.icon} />
+                                                            {transactionCategory.name}
+                                                        </Button>
+                                                    ) : false
+                                            }
                                         )
-
                                     ) : <NoRegistredCategory>Nenhuma categoria cadastrada</NoRegistredCategory>
                                 }
                             </LessBoard>
