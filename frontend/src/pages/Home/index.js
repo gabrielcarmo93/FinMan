@@ -17,9 +17,14 @@ class Home extends Component {
         balance: 0.00,
         categoriaMovimentação: undefined,
         billValue: 0,
+        despesas: [],
+        receitas: [],
+        movimentacoes: [],
+        startDate: moment().subtract(30, 'days').format(),
+        endDate: moment().format()
     }
 
-    componentDidMount() {
+    componentWillMount() {
         this.getUserByMail()
     }
 
@@ -33,7 +38,8 @@ class Home extends Component {
 
                 this.getReceitas()
                 this.getDespesas()
-                this.getMovimentacoes()
+                // this.getMovimentacoes()
+                // await this.getBalance()
 
             } else {
                 toast.error('Erro ao conectar')
@@ -57,24 +63,52 @@ class Home extends Component {
     async getDespesas() {
         const response = await api.get(`/categoriaDeGastoByOwner/${this.state.user.id}`)
 
-        if(response.data.length > 0)
+        if(response.data.length > 0) {
             this.setState({ despesas: response.data })
-    }
+        }
 
+        this.getMovimentacoes()
+    }
+    
     async getMovimentacoes() {
-        const response = await api.get(`/gastosByOwner/${this.state.user.id}`)
+        this.setState({ showModal: false })
+        this.setState({ showModal: undefined })
+        if(!moment(this.state.startDate).isValid()) {
+            toast.error('Data de início incorreta')
+            return false
+        }
+
+        if(!moment(this.state.endDate).isValid()) {
+            toast.error('Data de fim incorreta')
+            return false
+        }
+
+
+        const response = await api.get(`/gastosByOwner/${this.state.user.id}/${this.state.startDate}/${this.state.endDate}`)
+        this.setState({ movimentacoes: response.data })
 
         const data = []
 
-        const movimentacoes = response.data
+        const movimentacoes = this.state.movimentacoes
         const despesas = this.state.despesas
         const receitas = this.state.receitas
-        // console.log(response.data)
+
+        while(typeof movimentacoes === undefined) {
+            console.log('esperando')
+        }
+
+        while(typeof despesas === undefined) {
+            console.log('esperando')
+        }
+
+        while(typeof receitas === undefined) {
+            console.log('esperando')
+        }
+
         movimentacoes.forEach(function(el0, i0, all0) {
             if(el0.type === 'out') {
                 despesas.forEach(function(el1, i1, all1) {
                     if(el0.category === el1.id) {
-                        // console.log(el0, el1)
 
                         const obj = {
                             category: el0.category,
@@ -96,7 +130,6 @@ class Home extends Component {
             } else {
                 receitas.forEach(function(el1, i1, all1) {
                     if(el0.category === el1.id) {
-                        // console.log(el0, el1)
 
                         const obj = {
                             category: el0.category,
@@ -119,10 +152,26 @@ class Home extends Component {
         })
 
         this.setState({ movimentacoes: data })
+        this.getBalance()
     }
 
-    getBalance() {
-        
+    async getBalance() {
+        var plus = parseFloat(0)
+        var minus = parseFloat(0)
+
+        this.state.movimentacoes.forEach(function(el, i, all) {
+            if(el.type==='in'){
+                plus += parseFloat(el.value)
+            }
+
+            if(el.type==='out') {
+                minus += parseFloat(el.value)
+            }
+        })
+
+        const result = (plus-minus).toFixed(2)
+
+        this.setState({ balance: result })
     }
 
     registerReceitaCategory = async () => {
@@ -245,91 +294,128 @@ class Home extends Component {
                                     (moment().format('H') >= 12 && moment().format('H') < 18) ? '. Boa tarde!' : '. Boa noite!'
                                 }
                             </span>
-
-                            <Modal size='tiny' open={this.state.showModal} dimmer='blurring' trigger={
-                                <Button animated='fade'  onClick={() => this.createOptions()}>
-                                <Button.Content visible>Adicionar Movimentação</Button.Content>
-                                    <Button.Content hidden>
-                                        <Icon name='plus' />
-                                    </Button.Content>
-                                </Button>
-                            }>
-                                <Modal.Header>Registrar movimentação</Modal.Header>
+                            <div>
+                            <Modal size='mini' open={this.state.showModal} trigger={<Icon name='filter' style={{cursor: 'pointer', marginRight: '10px'}}/>}>
+                                <Modal.Header>Escolha o Período</Modal.Header>
                                 <Modal.Content>
-                                <Modal.Description>
-                                    <Form>
-                                        <Form.Field>
-                                            <label>Nome</label>
-                                            <input
-                                                name="movimentacaoName"
-                                                onChange={e => this.setState({ [e.target.name]: e.target.value })}
-                                            />
-                                        </Form.Field>
-
-                                        <Form.Field>
-                                            <label>Valor</label>
-                                            <Input iconPosition='left' placeholder='Valor'>
-                                                <Icon name='dollar' />
-                                                <CurrencyInput
-                                                    name="movimentacaoValue"
-                                                    decimalSeparator=","
-                                                    thousandSeparator="."
-                                                    value={this.state.billValue}
-                                                    onChangeEvent={(event, maskedvalue, floatvalue) => this.setState({ [event.target.name]: floatvalue, billValue: maskedvalue})}
-                                                />
-                                            </Input>
-                                        </Form.Field>
-                                        <Form.Field>
-                                            <label>Data</label>
-                                            <Input iconPosition='left' placeholder='Data'>
-                                                <Icon name='calendar alternate outline' />
+                                '    <Modal.Description>
+                                        <Form>
+                                            <Form.Field>
+                                                <label>Início</label>
                                                 <InputMask
-                                                    name="movimentacaoDate"
+                                                    name="startDate"
                                                     mask="99/99/9999"
-                                                    onChange={e => this.setState({ [e.target.name]: e.target.value })}
+                                                    onChange={e => this.setState({ [e.target.name]: moment(e.target.value,'DD/MM/YYYY').format() })}
                                                 />
-                                                
-                                            </Input>
-                                        </Form.Field>
-                                        <Form.Field>
-                                            <Radio
-                                                label='Receita'
-                                                name='categoriaMovimentação'
-                                                value='receita'
-                                                checked={this.state.categoriaMovimentação === 'receita'}
-                                                onChange={e=> this.setState({ categoriaMovimentação: 'receita'})}
-                                                style={{marginRight: '10px'}}
-                                            />
-                                            <Radio
-                                                label='Despesa'
-                                                name='categoriaMovimentação'
-                                                value='despesa'
-                                                checked={this.state.categoriaMovimentação === 'despesa'}
-                                                onChange={e=> this.setState({ categoriaMovimentação: 'despesa'})}
-                                                style={{marginLeft: '10px'}}
-                                            />
-                                        </Form.Field>
-                                        <Form.Field>
-                                            <Select
-                                                placeholder="Selecione a Categoria"
-                                                name="movimentacaooGroup"
-                                                options={this.createOptions()}
-                                                onChange={(e, data) => this.setState({ [data.name]: data.value }) }
-                                            />
-                                        </Form.Field>
-                                        <Form.Field>
-                                            <Button
-                                                primary
-                                                fluid
-                                                onClick={this.registerBill}
-                                            >
-                                                Registrar
+                                            </Form.Field>
+                                            <Form.Field>
+                                            <label>Fim</label>
+                                                <InputMask
+                                                    name="endDate"
+                                                    mask="99/99/9999"
+                                                    onChange={e => this.setState({ [e.target.name]: moment(e.target.value,'DD/MM/YYYY').format() })}
+                                                />
+                                            </Form.Field>
+                                            <Form.Field>
+                                                <Button
+                                                    primary
+                                                    fluid
+                                                    onClick={() => this.getMovimentacoes()}
+                                                >
+                                                    Filtrar
                                                 </Button>
-                                        </Form.Field>
-                                    </Form>
-                                </Modal.Description>
+                                            </Form.Field>
+                                        </Form>
+                                        
+                                    </Modal.Description>'
                                 </Modal.Content>
                             </Modal>
+
+                                <Modal size='tiny' open={this.state.showModal} dimmer='blurring' trigger={
+                                    <Button animated='fade'  onClick={() => this.createOptions()}>
+                                    <Button.Content visible>Adicionar Movimentação</Button.Content>
+                                        <Button.Content hidden>
+                                            <Icon name='plus' />
+                                        </Button.Content>
+                                    </Button>
+                                }>
+                                    <Modal.Header>Registrar movimentação</Modal.Header>
+                                    <Modal.Content>
+                                    <Modal.Description>
+                                        <Form>
+                                            <Form.Field>
+                                                <label>Nome</label>
+                                                <input
+                                                    name="movimentacaoName"
+                                                    onChange={e => this.setState({ [e.target.name]: e.target.value })}
+                                                />
+                                            </Form.Field>
+
+                                            <Form.Field>
+                                                <label>Valor</label>
+                                                <Input iconPosition='left' placeholder='Valor'>
+                                                    <Icon name='dollar' />
+                                                    <CurrencyInput
+                                                        name="movimentacaoValue"
+                                                        decimalSeparator=","
+                                                        thousandSeparator="."
+                                                        value={this.state.billValue}
+                                                        onChangeEvent={(event, maskedvalue, floatvalue) => this.setState({ [event.target.name]: floatvalue, billValue: maskedvalue})}
+                                                    />
+                                                </Input>
+                                            </Form.Field>
+                                            <Form.Field>
+                                                <label>Data</label>
+                                                <Input iconPosition='left' placeholder='Data'>
+                                                    <Icon name='calendar alternate outline' />
+                                                    <InputMask
+                                                        name="movimentacaoDate"
+                                                        mask="99/99/9999"
+                                                        onChange={e => this.setState({ [e.target.name]: e.target.value })}
+                                                    />
+                                                    
+                                                </Input>
+                                            </Form.Field>
+                                            <Form.Field>
+                                                <Radio
+                                                    label='Receita'
+                                                    name='categoriaMovimentação'
+                                                    value='receita'
+                                                    checked={this.state.categoriaMovimentação === 'receita'}
+                                                    onChange={e=> this.setState({ categoriaMovimentação: 'receita'})}
+                                                    style={{marginRight: '10px'}}
+                                                />
+                                                <Radio
+                                                    label='Despesa'
+                                                    name='categoriaMovimentação'
+                                                    value='despesa'
+                                                    checked={this.state.categoriaMovimentação === 'despesa'}
+                                                    onChange={e=> this.setState({ categoriaMovimentação: 'despesa'})}
+                                                    style={{marginLeft: '10px'}}
+                                                />
+                                            </Form.Field>
+                                            <Form.Field>
+                                                <Select
+                                                    placeholder="Selecione a Categoria"
+                                                    name="movimentacaooGroup"
+                                                    options={this.createOptions()}
+                                                    onChange={(e, data) => this.setState({ [data.name]: data.value }) }
+                                                />
+                                            </Form.Field>
+                                            <Form.Field>
+                                                <Button
+                                                    primary
+                                                    fluid
+                                                    onClick={this.registerBill}
+                                                >
+                                                    Registrar
+                                                    </Button>
+                                            </Form.Field>
+                                        </Form>
+                                    </Modal.Description>
+                                    </Modal.Content>
+                                </Modal>
+                            </div>
                         </BillsHeader>
                         <BillsDashBoard>
                             {
@@ -348,7 +434,7 @@ class Home extends Component {
                                                                 (movimentacao.type==='out') ? <Icon name={movimentacao.icon} /> : ''
                                                             }
                                                         </BillValue>
-                                                        <BillTitle>{movimentacao.name} </BillTitle>
+                                                        <BillTitle>{movimentacao.name} - {moment(movimentacao.date).format('DD/MM/YYYY')}</BillTitle>
                                                 </div>
                                             </BoardItem>
                                         )
@@ -361,8 +447,14 @@ class Home extends Component {
                     </Bills>
                     <AdvOptions>
                         <Balance>
-                            <h1>R$ 0,00</h1>
-                            <sup>Saldo do período</sup>
+                            {
+                                (this.state.balance > 0) ? (
+                                    <h1 style={{color: 'blue'}}>R$ {this.state.balance.toString().replace('.',',')}</h1>
+                                ) : (
+                                    <h1 style={{color: 'red'}}>R$ {this.state.balance.toString().replace('.',',')}</h1>
+                                )
+                            }
+                            <sup>Saldo do período {moment(this.state.startDate).format('DD/MM/YYYY')} a {moment(this.state.endDate).format('DD/MM/YYYY')}</sup>
                         </Balance>
 
                         <PlusCategory>

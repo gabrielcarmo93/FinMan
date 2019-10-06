@@ -17,7 +17,7 @@ const Body = styled.div`
 const BillsDashBoard = styled.div`
     border: 1px solid #5e5e5e;
     border-radius: 4px;
-    height: calc(100% - 40px);
+    height: calc(97% - 40px);
     box-sizing: border-box;
     margin: 20px 20px 0 20px;
     overflow-y: auto;

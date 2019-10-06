@@ -50,9 +50,9 @@ class GastoController {
     }
 
     async indexByOwner ({ params }) {
-        const { idOwner } = params
+        const { idOwner, startDate, endDate } = params
         
-        const gastos = await Gasto.query().where('idOwner', idOwner).orderBy('date', 'desc').fetch()
+        const gastos = await Gasto.query().where('idOwner', idOwner).where('date','>=',startDate).where('date','<=',endDate).orderBy('date', 'desc').fetch()
 
         return gastos
     }

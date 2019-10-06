@@ -25,7 +25,7 @@ Route.post('/authenticate', 'AuthController.authenticate')
 Route.get('/gastos', 'GastoController.index')
 Route.post('/gasto', 'GastoController.store')
 Route.get('/gasto/:id', 'GastoController.indexById')
-Route.get('/gastosByOwner/:idOwner', 'GastoController.indexByOwner')
+Route.get('/gastosByOwner/:idOwner/:startDate/:endDate', 'GastoController.indexByOwner')
 Route.put('/gasto', 'GastoController.update')
 Route.delete('gasto/:id', 'GastoController.deleteById')
 
