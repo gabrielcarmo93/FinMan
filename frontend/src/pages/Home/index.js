@@ -19,6 +19,7 @@ class Home extends Component {
         balance: 0.00,
         bills: [],
         transactions: [],
+        filter: [],
         transactionCategories: [],
         transactionCategory: 'out',
         startDate: moment().subtract(30, 'days').format(),
@@ -94,7 +95,8 @@ class Home extends Component {
                         updated_at: el0.updated_at,
                         value: el0.value,
                         icon: el1.icon,
-                        categoryName: el1.name
+                        categoryName: el1.name,
+                        visible: true
                     }
 
                     data.push(obj)
@@ -111,12 +113,14 @@ class Home extends Component {
         var minus = parseFloat(0)
 
         this.state.bills.forEach(function(el, i, all) {
-            if(el.type==='in'){
-                plus += parseFloat(el.value)
-            }
-
-            if(el.type==='out') {
-                minus += parseFloat(el.value)
+            if(el.visible) {
+                if(el.type==='in'){
+                    plus += parseFloat(el.value)
+                }
+    
+                if(el.type==='out') {
+                    minus += parseFloat(el.value)
+                }
             }
         })
 
@@ -216,7 +220,31 @@ class Home extends Component {
                 console.log(response)
             }
         }
+    }
 
+    setFilter = e => {
+        e.preventDefault()
+        // console.log(e.target.id)
+        const currentFilter = this.state.filter
+
+        const index = currentFilter.indexOf(parseInt(e.target.id))
+        if( index > -1 ) {
+            currentFilter.splice(index, 1)
+        } else {
+            currentFilter.push(parseInt(e.target.id))
+        }
+
+        const tempBills = this.state.bills
+        tempBills.forEach(function(el){
+            if(currentFilter.indexOf(parseInt(el.category)) > -1) {
+                el.visible = true
+            } else {
+                el.visible = false
+            }
+        })
+        
+        Object.assign(this.state.bills, tempBills)
+        this.getBalance()
     }
     render() {
         return (
@@ -362,23 +390,25 @@ class Home extends Component {
                             {
                                 (this.state.bills.length > 0) ? 
                                     this.state.bills.map(
-                                        bill => (
-                                            <BoardItem key={bill.id}>
-                                                <div className={bill.type}>
+                                        bill => {
+                                            return bill.visible ? (
+                                                <BoardItem key={bill.id}>
+                                                    <div className={bill.type}>
 
-                                                        <BillValue>
-                                                            {
-                                                                (bill.type==='in') ? <Icon name={bill.icon} /> : ''
-                                                            }
-                                                            R$ {bill.value.toString().replace('.',',')}
-                                                            {
-                                                                (bill.type==='out') ? <Icon name={bill.icon} /> : ''
-                                                            }
-                                                        </BillValue>
-                                                        <BillTitle>{bill.name} - {moment(bill.date).format('DD/MM/YYYY')}</BillTitle>
-                                                </div>
-                                            </BoardItem>
-                                        )
+                                                            <BillValue>
+                                                                {
+                                                                    (bill.type==='in') ? <Icon name={bill.icon} /> : ''
+                                                                }
+                                                                R$ {bill.value.toString().replace('.',',')}
+                                                                {
+                                                                    (bill.type==='out') ? <Icon name={bill.icon} /> : ''
+                                                                }
+                                                            </BillValue>
+                                                            <BillTitle>{bill.name} - {moment(bill.date).format('DD/MM/YYYY')}</BillTitle>
+                                                    </div>
+                                                </BoardItem>
+                                            ) : false
+                                        }
                                     )
                                 : (
                                     <span>Nenhuma movimentação registrada</span>
@@ -445,12 +475,14 @@ class Home extends Component {
                                                             icon
                                                             labelPosition='left'
                                                             basic
+                                                            id={transactionCategory.id}
                                                             color='green'
                                                             key={transactionCategory.id}
                                                             style={{boxingSizing: 'borderBox', margin: '2px'}}
                                                             size='mini'
+                                                            onClick={this.setFilter}
                                                         >
-                                                            <Icon name={transactionCategory.icon} />
+                                                            <Icon name={transactionCategory.icon} id={transactionCategory.id}/>
                                                             {transactionCategory.name}
                                                         </Button>
                                                     ) : false
@@ -505,13 +537,15 @@ class Home extends Component {
                                                         <Button
                                                             icon
                                                             labelPosition='left'
+                                                            id={transactionCategory.id}
                                                             basic
                                                             color='red'
                                                             key={transactionCategory.id}
                                                             style={{boxingSizing: 'borderBox', margin: '2px'}}
                                                             size='mini'
+                                                            onClick={this.setFilter}
                                                         >
-                                                            <Icon name={transactionCategory.icon} />
+                                                            <Icon name={transactionCategory.icon} id={transactionCategory.id}/>
                                                             {transactionCategory.name}
                                                         </Button>
                                                     ) : false
